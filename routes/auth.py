@@ -6,12 +6,10 @@ bp = Blueprint("auth", __name__)
 
 @bp.route("/")
 def index():
-        return redirect(url_for("auth.login"))
+        return render_template("index.html", register=False)
 
 @bp.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method == "GET":
-        return render_template("index.html", register=False)
     username = request.form.get("un")
     password = request.form.get("pwd")
     if not username or not password:
@@ -59,4 +57,4 @@ def admin_login():
 @bp.route("/logout", methods=["POST"])
 def logout():
     session.pop("username", None)
-    return redirect(url_for("auth.login"))
+    return render_template("index.html", register=False)

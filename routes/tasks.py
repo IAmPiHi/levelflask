@@ -123,7 +123,10 @@ def add_xp():
             user_xp_level = db.get_user_xp_level(session["username"])
             if user_xp_level is None:
                 return jsonify({"error": "用戶數據不存在"}), 500
-            return jsonify({"xp": user_xp_level["xp"], "level": user_xp_level["level"]})
+            return jsonify({
+                "xp": int(user_xp_level["xp"]),  # 強制轉為整數
+                "level": int(user_xp_level["level"])  # 強制轉為整數
+            })
         return jsonify({"error": "無法更新 XP"}), 400
 
 @bp.route("/get_xp_level")
@@ -133,4 +136,7 @@ def get_xp_level():
     user_xp_level = db.get_user_xp_level(session["username"])
     if user_xp_level is None:
         return jsonify({"error": "用戶數據不存在"}), 500
-    return jsonify({"xp": user_xp_level["xp"], "level": user_xp_level["level"]})
+    return jsonify({
+        "xp": int(user_xp_level["xp"]),  # 強制轉為整數
+        "level": int(user_xp_level["level"])  # 強制轉為整數
+    })

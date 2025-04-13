@@ -71,7 +71,7 @@ def reduce_xp():
 
         # 重新計算等級
         while new_xp < 0 or new_level > 1:
-            required_xp = 100 * (1.03 ** (new_level - 2))
+            required_xp = round(100 * (1.03 ** (new_level - 2)))
             if new_xp < required_xp:
                 new_level -= 1
                 new_xp += required_xp
