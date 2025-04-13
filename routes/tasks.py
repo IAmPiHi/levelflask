@@ -71,7 +71,7 @@ def add_task():
         category_id = int(category_id)
         xp = int(xp)
         daily_completion_limit = int(daily_completion_limit)
-        if xp <= 0 or xp > 100 or daily_completion_limit <= 0:
+        if xp <= 0 or xp > 100 or daily_completion_limit <= 0 or daily_completion_limit > 1000:
             return jsonify({"error": "無效的 XP 或次數上限值"}), 400
     except ValueError:
         return jsonify({"error": "參數必須為數字"}), 400

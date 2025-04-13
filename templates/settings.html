@@ -160,6 +160,10 @@
                 alert('請填寫所有欄位');
                 return;
             }
+            else if(xp > 100 || xp <= 0 || limit<=0 || limit > 1000){
+                alert('設定數值錯誤!\n\n單次xp不可超過100\n一天次數不可超過1000');
+                return;
+            }
             fetch('/api/add_task', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
