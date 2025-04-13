@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任務設定</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(to bottom, #74ebd5, #acb6e5);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            min-height : 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        .category-section {
+            margin-bottom: 20px;
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #3498db;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .task-list {
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-top: 5px;
+        }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+        input, button {
+
+            padding: 8px;
+            margin: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .delete-btn {
+            background: #dc3545;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .add-section {
+            margin-bottom: 20px;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav-links a {
+            margin: 0 10px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ username }} 的任務設定</h1>
+        <div class="add-section">
+            <h3>新增分類</h3>
+            <input type="text" id="newCategory" placeholder="輸入分類名稱">
+            <button onclick="addCategory()">新增</button>
+        </div>
+        <div id="categories"></div>
+        <div class="nav-links">
+            <a href="/system">任務頁</a> | 
+            <a href="/stats">統計功能</a> | 
+            <a href="/">重新登入</a>
+        </div>
+    </div>
+
+    <script>
+    function loadCategories() {
+            const container = document.getElementById('categories');
+            if (!container) {
+                console.error('Categories container not found');
+                return;
+            }
+            fetch('/api/categories', { credentials: 'same-origin' })
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    container.innerHTML = '';
+                    data.forEach(category => {
+                        const div = document.createElement('div');
+                        div.className = 'category-section';
+                        div.innerHTML = `
+                            <div class="category-header">
+                                <span>${category.name}</span>
+                                <button class="delete-btn" onclick="deleteCategory(${category.id})">刪除分類</button>
+                            </div>
+                            <div class="task-list">
+                                <div class="add-section">
+                                    <input type="text" id="taskName${category.id}" placeholder="任務名稱">
+                                    <input type="number" id="taskXP${category.id}" placeholder="XP" min="1" max="100">
+                                    <input type="number" id="taskLimit${category.id}" placeholder="每日次數上限" min="1">
+                                    <button onclick="addTask(${category.id})">新增任務</button>
+                                </div>
+                                ${category.tasks.map(task => `
+                                    <div class="task">
+                                        <span>${task.name} (+${task.xp} XP, 每日上限 ${task.daily_completion_limit} 次)</span>
+                                        <button class="delete-btn" onclick="deleteTask(${task.id})">刪除</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    console.error('載入分類失敗:', error);
+                    alert('無法載入分類數據: ' + error.message);
+                });
+        }
+
+        function addTask(categoryId) {
+            const name = document.getElementById(`taskName${categoryId}`).value.trim();
+            const xp = document.getElementById(`taskXP${categoryId}`).value;
+            const limit = document.getElementById(`taskLimit${categoryId}`).value;
+            if (!name || !xp || !limit) {
+                alert('請填寫所有欄位');
+                return;
+            }
+            fetch('/api/add_task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `category_id=${categoryId}&name=${encodeURIComponent(name)}&xp=${xp}&daily_completion_limit=${limit}`,
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('新增失敗');
+                    return response.json();
+                })
+                .then(() => {
+                    document.getElementById(`taskName${categoryId}`).value = '';
+                    document.getElementById(`taskXP${categoryId}`).value = '';
+                    document.getElementById(`taskLimit${categoryId}`).value = '';
+                    loadCategories();
+                })
+                .catch(error => alert('新增任務失敗: ' + error.message));
+        }
+    function addCategory() {
+        const name = document.getElementById('newCategory').value.trim();
+        if (!name) {
+            alert('分類名稱不能為空');
+            return;
+        }
+        fetch('/api/add_category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `name=${encodeURIComponent(name)}`,
+            credentials: 'same-origin'
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('新增失敗');
+                return response.json();
+            })
+            .then(() => {
+                document.getElementById('newCategory').value = '';
+                loadCategories();
+            })
+            .catch(error => alert('新增分類失敗: ' + error.message));
+    }
+
+    function deleteCategory(id) {
+        if (confirm('確定刪除此分類及其所有任務？')) {
+            fetch('/api/delete_category', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${id}`,
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('刪除失敗');
+                    loadCategories();
+                })
+                .catch(error => alert('刪除分類失敗: ' + error.message));
+        }
+    }
+
+    function deleteTask(id) {
+        if (confirm('確定刪除此任務？')) {
+            fetch('/api/delete_task', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${id}`,
+                credentials: 'same-origin'
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('刪除失敗');
+                    loadCategories();
+                })
+                .catch(error => alert('刪除任務失敗: ' + error.message));
+        }
+    }
+
+    window.onload = loadCategories;
+</script>
+</body>
+</html>

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>經驗值冒險</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            margin: 0;
+            padding: 20px;
+            color: #000000;
+            animation: fadeIn 1s ease-out;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.8s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        h1 {
+            text-align: center;
+            color: #1e3c72;
+            font-size: 2.8em;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .xp-bar-container {
+            width: 80%;
+            margin: 30px auto;
+            background: #e0e0e0;
+            border-radius: 25px;
+            overflow: hidden;
+            position: relative;
+            height: 40px;
+            box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+        .xp-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #73f0ad, #026f9e);
+            position: relative;
+            overflow: hidden;
+            transition: width 1.5s ease-in-out;
+        }
+        .xp-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.4),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .xp-text {
+            text-align: center;
+            font-weight: bold;
+            color: #fff;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 0 15px;
+            line-height: 40px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 2;
+        }
+        .xp-text.near-full {
+            color: #ffd700;
+            animation: glow 1.5s infinite alternate;
+        }
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #ffd700, 0 0 10px #ffd700; }
+            to { text-shadow: 0 0 10px #ffd700, 0 0 20px #ffd700; }
+        }
+        .xp-text.animate {
+            animation: pulse 0.6s ease;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.15); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        .level {
+            text-align: center;
+            font-size: 1.8em;
+            color: #1e3c72;
+            margin: 15px 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .tasks-container {
+            margin-top: 30px;
+        }
+        .category {
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+        .category h3 {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: background 0.3s ease;
+        }
+        .category h3:hover {
+            background: #2980b9;
+        }
+        .category h3::after {
+            content: '\25B6';
+            font-size: 1em;
+            transition: transform 0.3s ease;
+        }
+        .category h3.expanded::after {
+            content: '\25BC';
+        }
+        .task-list {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            transition: max-height 0.5s ease, padding 0.5s ease;
+        }
+        .task-list.show {
+            max-height: 500px;
+            padding: 15px;
+        }
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s ease;
+        }
+        .task:hover {
+            background: #e8f4f8;
+        }
+        .task:last-child {
+            border-bottom: none;
+        }
+        .task button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #28a745, #34c759);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        .task button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        .task button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .task button:active {
+            transform: scale(0.95);
+        }
+        .task button.clicked {
+            animation: clickFeedback 0.4s ease;
+        }
+        @keyframes clickFeedback {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); background: linear-gradient(45deg, #34c759, #28a745); }
+            100% { transform: scale(1); background: linear-gradient(45deg, #28a745, #34c759); }
+        }
+        .level-up-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.5), rgba(0, 0, 255, 0.3));
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.7s ease;
+            overflow: hidden;
+        }
+        .level-up-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .level-up-message {
+            background: linear-gradient(135deg, #ffd700, #ff6b6b);
+            padding: 50px;
+            border-radius: 25px;
+            text-align: center;
+            animation: popLevelUp 0.8s ease-out;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            z-index: 1001;
+            transform: scale(1);
+        }
+        .level-up-message::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.5), transparent);
+            animation: rotateShine 4s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes rotateShine {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes popLevelUp {
+            0% { transform: scale(0.3) rotate(-15deg); opacity: 0; }
+            60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        .level-up-message h2 {
+            color: #1e3c72;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            animation: textGlow 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes textGlow {
+            from { text-shadow: 0 0 10px #ffd700, 0 0 20px #ff6b6b; }
+            to { text-shadow: 0 0 20px #ffd700, 0 0 30px #ff6b6b; }
+        }
+        .level-up-message p {
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .level-up-message button {
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #28a745, #34c759);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.3em;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            z-index: 1002;
+        }
+        .level-up-message button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+        .level-up-message button:active {
+            transform: scale(0.95);
+        }
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, #ffd700, transparent);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: sparkle 1.8s ease-out forwards;
+        }
+        .star-particle {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: url('/static/sound/star.png') no-repeat center;
+            background-size: contain;
+            animation: sparkle 2s ease-out forwards;
+        }
+        @keyframes sparkle {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; }
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 30px;
+        }
+        .nav-links a {
+            margin: 0 15px;
+            color: #3498db;
+            text-decoration: none;
+            font-size: 1.1em;
+            transition: color 0.3s ease;
+        }
+        .nav-links a:hover {
+            color: #1e3c72;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ username }}，努力成為更好的自己吧！</h1>
+        <div class="level">等級：<span id="level">1</span></div>
+        <div class="xp-bar-container">
+            <div class="xp-bar" id="xpBar"></div>
+            <div class="xp-text" id="xpText">0 / 100 XP</div>
+        </div>
+        <div class="tasks-container" id="tasksContainer"></div>
+        <div class="nav-links">
+            <a href="{{ url_for('settings.settings_page') }}">任務設定</a> | 
+            <a href="{{ url_for('stats.stats_page') }}">統計功能</a> | 
+            <a href="{{ url_for('auth.logout') }}">登出</a>
+        </div>
+    </div>
+    <div class="level-up-overlay" id="levelUpOverlay">
+        <div class="level-up-message">
+            <h2>等級提升！</h2>
+            <p>你已達到等級 <span id="newLevel"></span>！</p>
+            <button id="closeLevelUpButton">繼續努力</button>
+        </div>
+    </div>
+    <div class="particles" id="particles"></div>
+
+    <script>
+        let currentXP = 0;
+        let currentLevel = 1;
+        let expandedCategories = [];
+
+        // 音效物件
+        const sounds = {
+            levelUp: new Audio('/static/sound/level_up.mp3'),
+            buttonClick: new Audio('/static/sound/button_click.mp3')
+        };
+
+        // 預載音效並設置音量
+        Object.values(sounds).forEach(sound => {
+            sound.preload = 'auto';
+            sound.volume = 0.5; // 設置音量為 50%
+        });
+
+        function loadUserData() {
+            fetch('{{ url_for("tasks.get_xp_level") }}', { credentials: 'include' })
+                .then(response => {
+                    if (!response.ok) throw new Error('載入用戶數據失敗');
+                    return response.json();
+                })
+                .then(data => {
+                    currentXP = data.xp;
+                    currentLevel = data.level;
+                    updateXPBar();
+                })
+                .catch(error => {
+                    console.error('載入用戶數據失敗:', error);
+                    alert('無法載入用戶數據，請重新登入');
+                });
+        }
+
+        function loadTasks() {
+            fetch('{{ url_for("tasks.get_categories") }}', { credentials: 'include' })
+                .then(response => {
+                    if (!response.ok) throw new Error('載入任務失敗');
+                    return response.json();
+                })
+                .then(data => {
+                    const container = document.getElementById('tasksContainer');
+                    container.innerHTML = '';
+                    data.forEach(category => {
+                        const isExpanded = expandedCategories.includes(category.id);
+                        const div = document.createElement('div');
+                        div.className = 'category';
+                        div.innerHTML = `
+                            <h3 onclick="toggleCategory(this, ${category.id})" class="${isExpanded ? 'expanded' : ''}">${category.name}</h3>
+                            <div class="task-list ${isExpanded ? 'show' : ''}">
+                                ${category.tasks.map(task => `
+                                    <div class="task">
+                                        <span>${task.name} (+${task.xp} XP, 今日剩餘 ${task.daily_completion_limit - task.current_daily_completions} 次)</span>
+                                        <button onclick="completeTask(${task.id}, this)" ${task.current_daily_completions >= task.daily_completion_limit ? 'disabled' : ''}>完成</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    console.error('載入任務失敗:', error);
+                    alert('無法載入任務，請重新登入');
+                });
+        }
+
+        function updateXPBar() {
+            const requiredXP = 100 * (1.03 ** (currentLevel - 1));
+            const percentage = (currentXP / requiredXP) * 100;
+            const xpBar = document.getElementById('xpBar');
+            const xpText = document.getElementById('xpText');
+            xpBar.style.width = `${Math.min(percentage, 100)}%`;
+            xpText.textContent = `${Math.floor(currentXP)} / ${Math.floor(requiredXP)} XP`;
+            document.getElementById('level').textContent = currentLevel;
+            xpText.classList.toggle('near-full', percentage > 80);
+            xpText.classList.add('animate');
+            setTimeout(() => xpText.classList.remove('animate'), 600);
+        }
+
+        function completeTask(taskId, button) {
+            button.classList.add('clicked');
+            sounds.buttonClick.play().catch(error => console.error('音效播放失敗:', error));
+            setTimeout(() => button.classList.remove('clicked'), 400);
+            fetch('{{ url_for("tasks.add_xp") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `task_id=${taskId}`,
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || '未知錯誤'); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const oldLevel = currentLevel;
+                    currentXP = data.xp;
+                    currentLevel = data.level;
+                    updateXPBar();
+                    loadTasks();
+                    if (currentLevel > oldLevel) {
+                        showLevelUp(currentLevel);
+                        triggerParticles();
+                    }
+                })
+                .catch(error => {
+                    console.error('提交任務失敗:', error);
+                    alert('任務提交失敗: ' + error.message);
+                });
+        }
+
+        function showLevelUp(newLevel) {
+            try {
+                const overlay = document.getElementById('levelUpOverlay');
+                const newLevelSpan = document.getElementById('newLevel');
+                if (!overlay || !newLevelSpan) {
+                    throw new Error('Overlay or newLevel element not found');
+                }
+                newLevelSpan.textContent = newLevel;
+                overlay.style.display = 'flex';
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                    sounds.levelUp.play().catch(error => console.error('音效播放失敗:', error));
+                }, 10);
+            } catch (error) {
+                console.error('Error in showLevelUp:', error);
+            }
+        }
+
+        function closeLevelUp() {
+            try {
+                const overlay = document.getElementById('levelUpOverlay');
+                if (!overlay) {
+                    throw new Error('Level-up overlay not found');
+                }
+                overlay.classList.remove('show');
+                sounds.buttonClick.play().catch(error => console.error('音效播放失敗:', error));
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                }, 700);
+            } catch (error) {
+                console.error('Error in closeLevelUp:', error);
+            }
+        }
+
+        function triggerParticles() {
+            const particlesContainer = document.getElementById('particles');
+            particlesContainer.innerHTML = '';
+            for (let i = 0; i < 40; i++) {
+                const isStar = Math.random() < 0.3;
+                const particle = document.createElement('div');
+                particle.className = isStar ? 'star-particle' : 'particle';
+                const angle = Math.random() * 2 * Math.PI;
+                const distance = 120 + Math.random() * 200;
+                particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+                particle.style.left = `${window.innerWidth / 2}px`;
+                particle.style.top = `${window.innerHeight / 2}px`;
+                particlesContainer.appendChild(particle);
+            }
+            setTimeout(() => particlesContainer.innerHTML = '', 1800);
+        }
+
+        function toggleCategory(header, categoryId) {
+            const taskList = header.nextElementSibling;
+            taskList.classList.toggle('show');
+            header.classList.toggle('expanded');
+            if (taskList.classList.contains('show')) {
+                if (!expandedCategories.includes(categoryId)) {
+                    expandedCategories.push(categoryId);
+                }
+            } else {
+                expandedCategories = expandedCategories.filter(id => id !== categoryId);
+            }
+            sounds.buttonClick.play().catch(error => console.error('音效播放失敗:', error));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const closeButton = document.getElementById('closeLevelUpButton');
+            if (closeButton) {
+                closeButton.addEventListener('click', closeLevelUp);
+            } else {
+                console.error('Close button not found');
+            }
+            loadUserData();
+            loadTasks();
+        });
+    </script>
+</body>
+</html>

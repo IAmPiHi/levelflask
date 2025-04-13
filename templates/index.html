@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入 / 註冊</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            margin: 0;
+        }
+        .container {
+            width: 350px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        h2 {
+            margin-bottom: 20px;
+            color: #1e3c72;
+            font-size: 1.8em;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            background: linear-gradient(45deg, #28a745, #34c759);
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .toggle {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #3498db;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .toggle:hover {
+            color: #1e3c72;
+        }
+        .hidden {
+            display: none;
+        }
+        .error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            animation: fadeInModal 0.3s ease-out;
+        }
+        @keyframes fadeInModal {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-content h3 {
+            color: #1e3c72;
+            margin-bottom: 15px;
+        }
+        .modal-content button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+        }
+        .modal-content button:hover {
+            background: linear-gradient(45deg, #2980b9, #1f618d);
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <!-- 登入表單 -->
+        <div id="loginForm" {% if not register %}class="visible"{% else %}class="hidden"{% endif %}>
+            <h2>登入</h2>
+            <p id="loginError" class="error"></p>
+            <form id="loginFormElement" onsubmit="handleLogin(event)">
+                <input type="text" name="un" placeholder="帳號" required>
+                <input type="password" name="pwd" placeholder="密碼" required>
+                <button type="submit">登入</button>
+            </form>
+            <p class="toggle" onclick="toggleForms()">沒有帳號？註冊</p>
+        </div>
+
+        <!-- 註冊表單 -->
+        <div id="registerForm" {% if register %}class="visible"{% else %}class="hidden"{% endif %}>
+            <h2>註冊</h2>
+            <p id="registerError" class="error"></p>
+            <form id="registerFormElement" onsubmit="handleRegister(event)">
+                <input type="text" name="un" placeholder="帳號" required>
+                <input type="password" name="pwd" placeholder="密碼" required>
+                <button type="submit">註冊</button>
+            </form>
+            <p class="toggle" onclick="toggleForms()">已經有帳號？登入</p>
+        </div>
+    </div>
+
+    <!-- 註冊成功彈窗 -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <h3>註冊成功！</h3>
+            <p>您的帳號已成功創建，請登入以繼續。</p>
+            <button onclick="closeModal()">確定</button>
+        </div>
+    </div>
+
+    <script>
+        function toggleForms() {
+            document.getElementById("loginForm").classList.toggle("hidden");
+            document.getElementById("registerForm").classList.toggle("hidden");
+            document.getElementById("loginError").textContent = "";
+            document.getElementById("registerError").textContent = "";
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const errorMessage = document.getElementById("loginError");
+            fetch('{{ url_for("auth.login") }}', {
+                method: 'POST',
+                body: new URLSearchParams(formData),
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { 
+                            throw new Error(err.error || '登入失敗'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    errorMessage.textContent = '';
+                    window.location.href = '/system';
+                })
+                .catch(error => {
+                    errorMessage.textContent = error.message;
+                });
+        }
+
+        function handleRegister(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            const errorMessage = document.getElementById("registerError");
+            fetch('{{ url_for("auth.register") }}', {
+                method: 'POST',
+                body: new URLSearchParams(formData),
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { 
+                            throw new Error(err.error || '註冊失敗'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    errorMessage.textContent = '';
+                    document.getElementById('successModal').style.display = 'flex';
+                })
+                .catch(error => {
+                    errorMessage.textContent = error.message;
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').style.display = 'none';
+            document.getElementById("registerForm").classList.add("hidden");
+            document.getElementById("loginForm").classList.remove("hidden");
+            document.getElementById("registerFormElement").reset();
+        }
+
+        
+    
+    </script>
+</body>
+</html>

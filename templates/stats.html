@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>統計功能</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(to bottom, #74ebd5, #acb6e5);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            min-height : 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .total-xp {
+            text-align: center;
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin: 20px 0;
+        }
+        .chart-container {
+            max-width: 600px;
+            margin: 20px auto;
+        }
+        .nav-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .nav-links a {
+            margin: 0 10px;
+            color: #3498db;
+            text-decoration: none;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ username }} 的統計數據</h1>
+        <div class="total-xp">總經驗值：<span id="totalXP">0</span> XP</div>
+        <div class="chart-container">
+            <canvas id="xpChart"></canvas>
+        </div>
+        <div class="nav-links">
+            <a href="system">任務頁</a> | 
+            <a href="/settings">任務設定</a> | 
+            <a href="/">重新登入</a>
+        </div>
+    </div>
+
+    <script>
+        function loadStats() {
+            fetch('/api/stats', { credentials: 'same-origin' })
+                .then(response => {
+                    if (!response.ok) throw new Error('載入統計失敗');
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('totalXP').textContent = data.total_xp;
+                    const ctx = document.getElementById('xpChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: data.categories.map(cat => cat.name),
+                            datasets: [{
+                                data: data.categories.map(cat => cat.xp),
+                                backgroundColor: [
+                                    '#ff6b6b', '#4ecdc4', '#45b7d1', 
+                                    '#96cebc', '#f7b7b7', '#d4a5a5',
+                                    '#a8dadc', '#457b9d', '#1d3557'
+                                ],
+                                borderColor: '#fff',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        font: { size: 14 },
+                                        color: '#2c3e50'
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.raw;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            return `${label}: ${value} XP (${percentage}%)`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('載入統計失敗:', error);
+                    alert('無法載入統計數據: ' + error.message);
+                });
+        }
+
+        window.onload = loadStats;
+    </script>
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理後台</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            margin: 0;
+            padding: 20px;
+            color: #000;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.8s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        h1 {
+            text-align: center;
+            color: #1e3c72;
+            font-size: 2.8em;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #1e3c72;
+            font-size: 1.8em;
+            margin: 30px 0 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        th:hover {
+            background: #2980b9;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover {
+            background: #e8f4f8;
+        }
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .xp-form {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .xp-form input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100px;
+        }
+        .xp-form button {
+            background: linear-gradient(45deg, #28a745, #34c759);
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            table, th, td {
+                font-size: 0.9em;
+            }
+            .xp-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>管理後台</h1>
+
+        <h2>使用者列表</h2>
+        <div id="userMessage" class="message"></div>
+        <table id="userTable">
+            <thead>
+                <tr>
+                    <th data-sort="id">ID</th>
+                    <th data-sort="username">帳號</th>
+                    <th data-sort="level">等級</th>
+                    <th data-sort="xp">經驗值</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <h2>減少用戶經驗值</h2>
+        <div id="xpMessage" class="message"></div>
+        <div class="xp-form">
+            <input type="number" id="userId" placeholder="用戶 ID" min="1" required>
+            <input type="number" id="xpAmount" placeholder="減少 XP" min="0" required>
+            <button onclick="reduceXP()">減少 XP</button>
+        </div>
+    </div>
+
+    <script>
+        let usersData = [];
+    
+        function showMessage(elementId, message, type) {
+            const messageDiv = document.getElementById(elementId);
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            setTimeout(() => { messageDiv.style.display = 'none'; }, 5000); // 延長顯示時間
+        }
+    
+        function renderUsers() {
+            const tbody = document.getElementById('userTable').querySelector('tbody');
+            tbody.innerHTML = '';
+            usersData.forEach(user => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.level}</td>
+                        <td>${user.xp}</td>
+                        <td>
+                            <button onclick="deleteUser(${user.id}, '${user.username}')">刪除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    
+        function fetchUsers() {
+            fetch('{{ url_for("admin.get_users") }}', { 
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || `HTTP 錯誤: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(users => {
+                    usersData = users;
+                    renderUsers();
+                })
+                .catch(error => {
+                    console.error('Fetch Users 錯誤:', error);
+                    showMessage('userMessage', `無法載入用戶列表: ${error.message}`, 'error');
+                });
+        }
+    
+        function deleteUser(id, username) {
+            if (username === 'admin') {
+                showMessage('userMessage', '無法刪除管理員帳號！', 'error');
+                return;
+            }
+            if (!confirm('確定要刪除該使用者？')) return;
+            fetch('{{ url_for("admin.delete_user") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id=${id}`,
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { 
+                            throw new Error(err.error || '刪除用戶失敗'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showMessage('userMessage', data.message, 'success');
+                    fetchUsers();
+                })
+                .catch(error => {
+                    showMessage('userMessage', error.message, 'error');
+                });
+        }
+    
+        function reduceXP() {
+            const userId = document.getElementById('userId').value;
+            const xpAmount = document.getElementById('xpAmount').value;
+            if (!userId || !xpAmount || xpAmount < 0) {
+                showMessage('xpMessage', '請輸入有效的用戶 ID 和 XP 值', 'error');
+                return;
+            }
+            fetch('{{ url_for("admin.reduce_xp") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `user_id=${userId}&xp=${xpAmount}`,
+                credentials: 'include'
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { 
+                            throw new Error(err.error || '減少 XP 失敗'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showMessage('xpMessage', data.message, 'success');
+                    document.getElementById('userId').value = '';
+                    document.getElementById('xpAmount').value = '';
+                    fetchUsers();
+                })
+                .catch(error => {
+                    showMessage('xpMessage', error.message, 'error');
+                });
+        }
+    
+        function sortTable(key, order) {
+            usersData.sort((a, b) => {
+                let valA = a[key], valB = b[key];
+                if (key === 'username') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+                if (valA < valB) return order === 'asc' ? -1 : 1;
+                if (valA > valB) return order === 'asc' ? 1 : -1;
+                return 0;
+            });
+            renderUsers();
+        }
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchUsers();
+            const headers = document.querySelectorAll('#userTable th[data-sort]');
+            headers.forEach(header => {
+                header.addEventListener('click', () => {
+                    const key = header.dataset.sort;
+                    const order = header.dataset.order === 'asc' ? 'desc' : 'asc';
+                    headers.forEach(h => h.dataset.order = '');
+                    header.dataset.order = order;
+                    sortTable(key, order);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
