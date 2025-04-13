@@ -88,6 +88,12 @@
         .nav-links a:hover {
             text-decoration: underline;
         }
+        .error-message {
+            color: #dc3545;
+            font-size: 0.9em;
+            margin: 5px 0 0 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -107,7 +113,10 @@
     </div>
 
     <script>
-    function loadCategories() {
+        // 儲存每個分類的任務名稱
+        let categoryTasks = {};
+    
+        function loadCategories() {
             const container = document.getElementById('categories');
             if (!container) {
                 console.error('Categories container not found');
@@ -120,7 +129,10 @@
                 })
                 .then(data => {
                     container.innerHTML = '';
+                    categoryTasks = {}; // 重置任務名稱儲存
                     data.forEach(category => {
+                        // 儲存該分類的任務名稱（轉為小寫以忽略大小寫）
+                        categoryTasks[category.id] = category.tasks.map(task => task.name.toLowerCase());
                         const div = document.createElement('div');
                         div.className = 'category-section';
                         div.innerHTML = `
@@ -134,6 +146,7 @@
                                     <input type="number" id="taskXP${category.id}" placeholder="XP" min="1" max="100">
                                     <input type="number" id="taskLimit${category.id}" placeholder="每日次數上限" min="1">
                                     <button onclick="addTask(${category.id})">新增任務</button>
+                                    <p class="error-message" id="errorMessage${category.id}"></p>
                                 </div>
                                 ${category.tasks.map(task => `
                                     <div class="task">
@@ -151,19 +164,39 @@
                     alert('無法載入分類數據: ' + error.message);
                 });
         }
-
+    
         function addTask(categoryId) {
-            const name = document.getElementById(`taskName${categoryId}`).value.trim();
-            const xp = document.getElementById(`taskXP${categoryId}`).value;
-            const limit = document.getElementById(`taskLimit${categoryId}`).value;
+            const nameInput = document.getElementById(`taskName${categoryId}`);
+            const xpInput = document.getElementById(`taskXP${categoryId}`);
+            const limitInput = document.getElementById(`taskLimit${categoryId}`);
+            const errorMessage = document.getElementById(`errorMessage${categoryId}`);
+            
+            const name = nameInput.value.trim();
+            const xp = xpInput.value;
+            const limit = limitInput.value;
+    
+            // 現有驗證
             if (!name || !xp || !limit) {
-                alert('請填寫所有欄位');
+                errorMessage.textContent = '請填寫所有欄位';
+                errorMessage.style.display = 'block';
                 return;
             }
-            else if(xp > 100 || xp <= 0 || limit<=0 || limit > 1000){
-                alert('設定數值錯誤!\n\n單次xp不可超過100\n一天次數不可超過1000');
+            if (xp > 100 || xp <= 0 || limit <= 0 || limit > 1000) {
+                errorMessage.textContent = '設定數值錯誤！單次XP不可超過100，一天次數不可超過1000';
+                errorMessage.style.display = 'block';
                 return;
             }
+    
+            // 檢查任務名稱是否重複
+            if (categoryTasks[categoryId].includes(name.toLowerCase())) {
+                errorMessage.textContent = '此分類下已有相同任務名稱';
+                errorMessage.style.display = 'block';
+                return;
+            }
+    
+            // 清除錯誤訊息
+            errorMessage.style.display = 'none';
+    
             fetch('/api/add_task', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -175,69 +208,74 @@
                     return response.json();
                 })
                 .then(() => {
-                    document.getElementById(`taskName${categoryId}`).value = '';
-                    document.getElementById(`taskXP${categoryId}`).value = '';
-                    document.getElementById(`taskLimit${categoryId}`).value = '';
+                    nameInput.value = '';
+                    xpInput.value = '';
+                    limitInput.value = '';
                     loadCategories();
                 })
-                .catch(error => alert('新增任務失敗: ' + error.message));
+                .catch(error => {
+                    errorMessage.textContent = '新增任務失敗: ' + error.message;
+                    errorMessage.style.display = 'block';
+                });
         }
-    function addCategory() {
-        const name = document.getElementById('newCategory').value.trim();
-        if (!name) {
-            alert('分類名稱不能為空');
-            return;
-        }
-        fetch('/api/add_category', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `name=${encodeURIComponent(name)}`,
-            credentials: 'same-origin'
-        })
-            .then(response => {
-                if (!response.ok) throw new Error('新增失敗');
-                return response.json();
-            })
-            .then(() => {
-                document.getElementById('newCategory').value = '';
-                loadCategories();
-            })
-            .catch(error => alert('新增分類失敗: ' + error.message));
-    }
-
-    function deleteCategory(id) {
-        if (confirm('確定刪除此分類及其所有任務？')) {
-            fetch('/api/delete_category', {
+    
+        function addCategory() {
+            const name = document.getElementById('newCategory').value.trim();
+            if (!name) {
+                alert('分類名稱不能為空');
+                return;
+            }
+            fetch('/api/add_category', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id=${id}`,
+                body: `name=${encodeURIComponent(name)}`,
                 credentials: 'same-origin'
             })
                 .then(response => {
-                    if (!response.ok) throw new Error('刪除失敗');
+                    if (!response.ok) throw new Error('新增失敗');
+                    return response.json();
+                })
+                .then(() => {
+                    document.getElementById('newCategory').value = '';
                     loadCategories();
                 })
-                .catch(error => alert('刪除分類失敗: ' + error.message));
+                .catch(error => alert('新增分類失敗: ' + error.message));
         }
-    }
-
-    function deleteTask(id) {
-        if (confirm('確定刪除此任務？')) {
-            fetch('/api/delete_task', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id=${id}`,
-                credentials: 'same-origin'
-            })
-                .then(response => {
-                    if (!response.ok) throw new Error('刪除失敗');
-                    loadCategories();
+    
+        function deleteCategory(id) {
+            if (confirm('確定刪除此分類及其所有任務？')) {
+                fetch('/api/delete_category', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${id}`,
+                    credentials: 'same-origin'
                 })
-                .catch(error => alert('刪除任務失敗: ' + error.message));
+                    .then(response => {
+                        if (!response.ok) throw new Error('刪除失敗');
+                        loadCategories();
+                    })
+                    .catch(error => alert('刪除分類失敗: ' + error.message));
+            }
         }
-    }
-
-    window.onload = loadCategories;
-</script>
+    
+        function deleteTask(id) {
+            if (confirm('確定刪除此任務？')) {
+                fetch('/api/delete_task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `id=${id}`,
+                    credentials: 'same-origin'
+                })
+                    .then(response => {
+                        if (!response.ok) throw new Error('刪除失敗');
+                        loadCategories();
+                    })
+                    .catch(error => alert('刪除任務失敗: ' + error.message));
+            }
+        }
+    
+        window.onload = loadCategories;
+        </script>
+        <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92fa11a2dc7b7ba5',t:'MTc0NDUzNzkyOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
