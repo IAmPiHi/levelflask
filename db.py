@@ -181,13 +181,25 @@ class Database:
             )
             conn.commit()
 
-    def get_daily_xp(self, username, task_id):
-        date = time.strftime("%Y-%m-%d")
+    def reset_daily_completions(self, date):
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute("DELETE FROM task_completions WHERE date = ?", (date,))
+            conn.commit()
+
+    def get_daily_xp(self, username, task_id):
+        current_date = time.strftime("%Y-%m-%d")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # 檢查是否有舊日期的記錄需要清除
+            cursor.execute("SELECT DISTINCT date FROM task_completions WHERE date < ?", (current_date,))
+            old_dates = cursor.fetchall()
+            for old_date in old_dates:
+                self.reset_daily_completions(old_date["date"])
+            # 查詢當天完成次數
             cursor.execute(
                 "SELECT COUNT(*) FROM task_completions WHERE username = ? AND task_id = ? AND date = ?",
-                (username, task_id, date)
+                (username, task_id, current_date)
             )
             result = cursor.fetchone()[0]
             return result if result else 0
