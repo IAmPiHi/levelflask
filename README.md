@@ -52,10 +52,10 @@ python app.py
 
 ## 📂 專案結構
 
-├── app.py              # Flask 核心邏輯
-├── static/             # 靜態資源 (CSS, JS, Images)
-├── templates/          # 前端 HTML 頁面
-└── README.md           # 專案說明文件
+├── app.py              # Flask 核心邏輯<br>
+├── static/             # 靜態資源 (CSS, JS, Images)<br>
+├── templates/          # 前端 HTML 頁面<br>
+└── README.md           # 專案說明文件<br>
 
 ---
 
