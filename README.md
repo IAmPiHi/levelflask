@@ -33,8 +33,10 @@
 若要在本地端執行此專案，請按照以下步驟操作：
 
 ### 1. 複製專案
-git clone https://github.com/你的用戶名稱/你的專案名稱.git
-cd 你的專案名稱
+```
+git clone https://github.com/IAmPiHi/levelflask.git
+cd 檔案位置
+```
 
 ### 2. 安裝必要套件
 請確保你已安裝 Python，接著安裝 Flask：
